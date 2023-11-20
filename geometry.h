@@ -229,6 +229,18 @@ struct Matrix : public std::array<std::array<T, ROW>, COL> {
 
 // Matrix运算
 template <typename T, size_t ROW, size_t COL>
+[[nodiscard]] constexpr inline bool
+operator==(const Matrix<T, ROW, COL> &left, const Matrix<T, ROW, COL> &right) {
+  return std::equal(left.begin(), left.end(), right.begin());
+}
+
+template <typename T, size_t ROW, size_t COL>
+[[nodiscard]] constexpr inline bool
+operator!=(const Matrix<T, ROW, COL> &left, const Matrix<T, ROW, COL> &right) {
+  return !(left == right);
+}
+
+template <typename T, size_t ROW, size_t COL>
 inline Matrix<T, ROW, COL> operator+(const Matrix<T, ROW, COL> &left,
                                      const Matrix<T, ROW, COL> &right) {
   Matrix<T, ROW, COL> sum;
@@ -242,23 +254,210 @@ inline Matrix<T, ROW, COL> operator+(const Matrix<T, ROW, COL> &left,
 template <typename T, size_t ROW, size_t COL>
 inline Matrix<T, ROW, COL> operator-(const Matrix<T, ROW, COL> &left,
                                      const Matrix<T, ROW, COL> &right) {
-  Matrix<T, ROW, COL> sum;
+  Matrix<T, ROW, COL> mat;
   for (size_t r = 0; r < ROW; r++) {
     for (size_t c = 0; c < COL; c++)
-      sum[r][c] = left[r][c] - right[r][c];
+      mat[r][c] = left[r][c] - right[r][c];
   }
-  return sum;
+  return mat;
+}
+
+// mat*mat
+template <typename T, size_t ROW, size_t COL, size_t NEW_COL>
+inline Matrix<T, ROW, COL> operator*(const Matrix<T, ROW, COL> &left,
+                                     const Matrix<T, COL, NEW_COL> &right) {
+  Matrix<T, ROW, NEW_COL> mat;
+  for (size_t r = 0; r < ROW; r++) {
+    for (size_t c = 0; c < NEW_COL; c++)
+      mat[r][c] = vecDot(left.row(r), right.col(c));
+  }
+  return mat;
+}
+
+// mat*x
+template <typename T, size_t ROW, size_t COL>
+inline Matrix<T, ROW, COL> operator*(const Matrix<T, ROW, COL> &left, T x) {
+  Matrix<T, ROW, COL> mat;
+  for (size_t r = 0; r < ROW; r++) {
+    for (size_t c = 0; c < COL; c++)
+      mat[r][c] = left[r][c] * x;
+  }
+  return mat;
+}
+
+// x*mat
+template <typename T, size_t ROW, size_t COL>
+inline Matrix<T, ROW, COL> operator*(T x, const Matrix<T, ROW, COL> &right) {
+  return right * x;
+}
+
+// mat*v
+template <typename T, size_t ROW, size_t COL>
+inline Vec<T, ROW> operator*(const Matrix<T, ROW, COL> &left,
+                             const Vec<T, COL> &right) {
+  Vec<T, ROW> v;
+  for (size_t i = 0; i < ROW; i++) {
+    v[i] = vecDot(right, left.row(i));
+  }
+  return v;
+}
+
+// v*mat
+template <typename T, size_t ROW, size_t COL>
+inline Vec<T, COL> operator*(const Vec<T, ROW> &left,
+                             const Matrix<T, ROW, COL> &right) {
+  Vec<T, COL> v;
+  for (size_t i = 0; i < COL; i++) {
+    v[i] = vecDot(left, right.col(i));
+  }
+  return v;
 }
 
 template <typename T, size_t ROW, size_t COL>
-inline Matrix<T, ROW, COL> operator*(const Matrix<T, ROW, COL> &left,
-                                     const Matrix<T, ROW, COL> &right) {
-  Matrix<T, ROW, COL> sum;
+inline Matrix<T, ROW, COL> operator/(const Matrix<T, ROW, COL> &left, T x) {
+  Matrix<T, ROW, COL> mat;
   for (size_t r = 0; r < ROW; r++) {
     for (size_t c = 0; c < COL; c++)
-      sum[r][c] = vecDot(left.row(r), right.col(c));
+      mat[r][c] = left[r][c] / x;
   }
-  return sum;
+  return mat;
+}
+
+template <typename T, size_t ROW, size_t COL>
+inline Matrix<T, ROW, COL> operator/(T x, const Matrix<T, ROW, COL> &right) {
+  Matrix<T, ROW, COL> mat;
+  for (size_t r = 0; r < ROW; r++) {
+    for (size_t c = 0; c < COL; c++)
+      mat[r][c] = x / right[r][c];
+  }
+  return mat;
+}
+
+template <typename T, size_t ROW, size_t COL>
+constexpr inline T matCofactor(const Matrix<T, ROW, COL> &m, size_t row,
+                               size_t col);
+
+// Matrix函数
+//行列式求值
+template <typename T, size_t ROW, size_t COL>
+constexpr inline T matDet(const Matrix<T, ROW, COL> &m) {
+  static_assert(ROW == COL, "The rows and columns of a matrix are different.");
+
+  if constexpr (ROW == 1) {
+    return m[0][0];
+  } else if constexpr (ROW == 2) {
+    return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+  } else {
+    T sum = 0;
+    for (size_t i = 0; i < ROW; i++)
+      sum += m[0][i] * matCofactor(m, 0, i);
+    return sum;
+  }
+}
+
+// 余子式
+template <typename T, size_t ROW, size_t COL>
+constexpr inline T matCofactor(const Matrix<T, ROW, COL> &m, size_t row,
+                               size_t col) {
+  static_assert(ROW == COL, "The rows and columns of a matrix are different.");
+  if constexpr (ROW == 1) {
+    return 0;
+  } else {
+    return matDet(m.getMinor(row, col)) * (((row + col) % 2) ? -1 : 1);
+  }
+}
+
+// 伴随矩阵
+template <typename T, size_t ROW, size_t COL>
+constexpr inline T matAdjoint(const Matrix<T, ROW, COL> &m) {
+  Matrix<T, ROW, COL> mat;
+  for (size_t r = 0; r < ROW; r++) {
+    for (size_t c = 0; c < COL; c++)
+      mat[r][c] = matrix_cofactor(m, c, r);
+  }
+  return mat;
+}
+
+// 求逆矩阵
+template <typename T, size_t ROW, size_t COL>
+constexpr inline T matInvert(const Matrix<T, ROW, COL> &m) {
+  Matrix<T, ROW, COL> mat = matAdjoint(m);
+  T det = vecDot(m.Row(0), mat.Col(0));
+  return mat / det;
+}
+
+using Vec2f = Vec<float, 2>;
+using Vec2i = Vec<int32_t, 2>;
+using Vec3f = Vec<float, 3>;
+using Vec3i = Vec<int32_t, 3>;
+using Vec4f = Vec<float, 3>;
+using Vec4i = Vec<int32_t, 3>;
+
+using Mat3x3f = Matrix<float, 3, 3>;
+using Mat4x4f = Matrix<float, 4, 4>;
+
+// 3D数学运算
+constexpr inline Mat4x4f matIdentity() {
+  return Mat4x4f{std::array<float, 4>{1, 0, 0, 0},
+                 {0, 1, 0, 0},
+                 {0, 0, 1, 0},
+                 {0, 0, 0, 1}};
+}
+
+constexpr inline Mat4x4f matTranslate(float x, float y, float z) {
+  return Mat4x4f{std::array<float, 4>{1, 0, 0, 0},
+                 {0, 1, 0, 0},
+                 {0, 0, 1, 0},
+                 {x, y, z, 1}};
+}
+
+constexpr inline Mat4x4f matScale(float x, float y, float z) {
+  return Mat4x4f{std::array<float, 4>{x, 0, 0, 0},
+                 {0, y, 0, 0},
+                 {0, 0, z, 0},
+                 {0, 0, 0, 1}};
+}
+
+constexpr inline Mat4x4f matRotate(float x, float y, float z, float theta) {
+  float qsin = static_cast<float>(std::sin(theta * 0.5f));
+  float qcos = static_cast<float>(std::cos(theta * 0.5f));
+  float w = qcos;
+  Vec3f vec = vecNormalize(Vec3f{x, y, z});
+  x = vec.x * qsin;
+  y = vec.y * qsin;
+  z = vec.z * qsin;
+
+  return Mat4x4f{
+      std::array<float, 4>{1 - 2 * y * y - 2 * z * z, 2 * x * y + 2 * w * z,
+                           2 * x * z - 2 * w * y, 0},
+      std::array<float, 4>{2 * x * y - 2 * w * z, 1 - 2 * x * x - 2 * z * z,
+                           2 * y * z + 2 * w * x, 0},
+      std::array<float, 4>{2 * x * z + 2 * w * y, 2 * y * z - 2 * w * x,
+                           1 - 2 * x * x - 2 * y * y, 0},
+      std::array<float, 4>{0, 0, 0, 1}};
+}
+
+inline Mat4x4f matLookat(const Vec3f &eye, const Vec3f &at, const Vec3f &up) {
+  Vec3f zaxis = vecNormalize(at - eye);
+  Vec3f xaxis = vecNormalize(vecCross(up, zaxis));
+  Vec3f yaxis = vecCross(zaxis, xaxis);
+
+  return Mat4x4f{
+      std::array<float, 4>{xaxis.x, yaxis.x, zaxis.x, 0},
+      {xaxis.y, yaxis.y, zaxis.y, 0},
+      {xaxis.z, yaxis.z, zaxis.z, 0},
+      {-vecDot(eye, xaxis), -vecDot(eye, yaxis), -vecDot(eye, zaxis), 1}};
+}
+
+inline Mat4x4f matPerspecTive(float fovy, float aspect, float zn, float zf) {
+  float fax = 1.0f / (float)tan(fovy * 0.5f);
+  Mat4x4f mat{};
+  mat[0][0] = (float)(fax / aspect);
+  mat[1][1] = (float)(fax);
+  mat[2][2] = zf / (zf - zn);
+  mat[3][2] = -zn * zf / (zf - zn);
+  mat[2][3] = 1;
+  return mat;
 }
 
 } // namespace raster
