@@ -1,9 +1,12 @@
+#pragma once
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <functional>
 #include <iostream>
 #include <numeric>
+#include <valarray> //not use
 #include <variant>
 
 namespace raster {
@@ -189,17 +192,17 @@ struct Matrix : public std::array<std::array<T, ROW>, COL> {
   Vec<T, ROW> col(size_t c) const {
     Vec<T, ROW> v;
     for (size_t r = 0; r < ROW; r++) {
-      v.data[r] = *this[r][c];
+      v.data[r] = (*this)[r][c];
     }
 
     return v;
   }
 
-  void setRow(size_t r, const Vec<T, COL> &v) { *this[r] = v.data; }
+  void setRow(size_t r, const Vec<T, COL> &v) { (*this)[r] = v.data; }
 
   void setCol(size_t c, const Vec<T, ROW> &v) {
     for (size_t r = 0; r < ROW; r++) {
-      *this[r][c] = v[r];
+      (*this)[r][c] = v[r];
     }
   }
 
@@ -210,7 +213,7 @@ struct Matrix : public std::array<std::array<T, ROW>, COL> {
     Matrix<T, ROW - 1, COL - 1> mat;
     for (size_t r = 0; r < ROW - 1; r++) {
       for (size_t c = 0; c < COL - 1; c++) {
-        mat[r][c] = *this[r < row ? r : r + 1][c < col ? c : c + 1];
+        mat[r][c] = (*this)[r < row ? r : r + 1][c < col ? c : c + 1];
       }
     }
     return mat;
@@ -221,7 +224,7 @@ struct Matrix : public std::array<std::array<T, ROW>, COL> {
     Matrix<T, COL, ROW> mat;
     for (size_t r = 0; r < ROW; r++) {
       for (size_t c = 0; c < COL; c++)
-        mat[c][r] = *this[r][c];
+        mat[c][r] = (*this)[r][c];
     }
     return mat;
   }
@@ -390,8 +393,8 @@ using Vec2f = Vec<float, 2>;
 using Vec2i = Vec<int32_t, 2>;
 using Vec3f = Vec<float, 3>;
 using Vec3i = Vec<int32_t, 3>;
-using Vec4f = Vec<float, 3>;
-using Vec4i = Vec<int32_t, 3>;
+using Vec4f = Vec<float, 4>;
+using Vec4i = Vec<int32_t, 4>;
 
 using Mat3x3f = Matrix<float, 3, 3>;
 using Mat4x4f = Matrix<float, 4, 4>;
@@ -450,10 +453,10 @@ inline Mat4x4f matLookat(const Vec3f &eye, const Vec3f &at, const Vec3f &up) {
 }
 
 inline Mat4x4f matPerspecTive(float fovy, float aspect, float zn, float zf) {
-  float fax = 1.0f / (float)tan(fovy * 0.5f);
+  float fax = 1.0f / static_cast<float>(tan(fovy * 0.5f));
   Mat4x4f mat{};
-  mat[0][0] = (float)(fax / aspect);
-  mat[1][1] = (float)(fax);
+  mat[0][0] = fax / aspect;
+  mat[1][1] = fax;
   mat[2][2] = zf / (zf - zn);
   mat[3][2] = -zn * zf / (zf - zn);
   mat[2][3] = 1;
